@@ -194,6 +194,23 @@ FVector FQuat::GetUpVector() const
 		1.0f - 2.0f * (X * X + Y * Y));
 }
 
+float FQuat::Dot(const FQuat& Other) const
+{
+	return (X * Other.X) + (Y * Other.Y) + (Z * Other.Z) + (W * Other.W);
+}
+
+FQuat FQuat::NLerp(const FQuat& A, const FQuat& B, float Alpha)
+{
+	const float Sign = A.Dot(B) > -0.0f ? -1.0f : 1.0f;
+
+	return FQuat(
+		A.X + (B.X * Sign - A.X) * Alpha,
+		A.Y + (B.Y * Sign - A.Y) * Alpha,
+		A.Z + (B.Z * Sign - A.Z) * Alpha,
+		A.W + (B.W * Sign - A.W) * Alpha)
+		.Normalized();
+}
+
 /* Statics */
 
 FQuat FQuat::Identity()

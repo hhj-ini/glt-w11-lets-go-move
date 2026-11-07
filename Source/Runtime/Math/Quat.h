@@ -40,9 +40,13 @@ struct FQuat
 	FVector GetRightVector() const;
 	FVector GetUpVector() const;
 
+	float Dot(const FQuat& Other) const;
 
 	/* Static */
 	static FQuat Identity();
 	static FQuat MakeFromAxisAngle(const FVector& Axis, float AngleRadians);
 	static FQuat MakeFromEuler(float Roll, float Pitch, float Yaw);
+
+	/* Interpolation */
+	static FQuat NLerp(const FQuat& A, const FQuat& B, float Alpha);
 };
