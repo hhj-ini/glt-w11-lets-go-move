@@ -14,6 +14,8 @@ public:
 	FAnimSequenceData Data;
 
 	float GetPlayLength() const { return Data.SequenceLength; }
+
+	// Bone의 인덱스와 시간을 받아서 샘플링
 	FTransform SampleTrack(int32 TrackIndex, float Time) const
 	{
 		const FRawAnimSequenceTrack& K = Data.Tracks[TrackIndex].InternalTrack;

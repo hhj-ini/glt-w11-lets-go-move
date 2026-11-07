@@ -9,6 +9,7 @@
 #include "Render/Mesh.h"
 #include "Render/RenderCommand.h"
 #include "Render/Texture2D.h"
+#include "Animation/AnimSequence.h"
 #include <chrono>
 #include <functional>
 #include <map>
@@ -69,6 +70,23 @@ public:
 		{
 			auto* Skeleton = Allocate<USkeleton>();
 			Skeleton->RefSkeleton = Asset.RefSkeleton; Object = Skeleton;
+		}
+		else if (Asset.Type == EFbxAssetType::AnimSequence)
+		{
+			USkeleton* Skeleton = Cast<USkeleton>(Resolve(Asset.SkeletonKey));
+			if (!Skeleton)
+			{
+				if (Error.empty())
+				{
+					Error = "Invalid FBX Skeleton reference";
+					return nullptr;
+				}
+			}
+
+			UAnimSequence* Anim = Allocate<UAnimSequence>();
+			Anim->Skeleton = Skeleton;
+			Anim->Data = Asset.Animation;
+			Object = Anim;
 		}
 		else if (Asset.Type == EFbxAssetType::Material)
 		{

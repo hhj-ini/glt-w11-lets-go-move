@@ -2,6 +2,7 @@
 #include "SkeletalMeshComponent.h"
 #include "Asset/AssetManager.h"
 #include "Render/SkeletalMesh.h"
+#include "Animation/AnimSequence.h"
 
 USkeletalMeshComponent::USkeletalMeshComponent()
 {
@@ -18,7 +19,35 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 {
 	Super::TickComponent(DeltaTime);
 
-	// TODO: 애니메이션 평가 → BoneSpaceTransforms → RefreshBoneTransforms
+	if (!CurrentAnim || !SkeletalMesh)
+	{
+		return;
+	}
+
+	const float Length = CurrentAnim->GetPlayLength();
+	CurrentTime += DeltaTime * PlayRate;
+	CurrentTime = bLooping ? std::fmod(CurrentTime, Length) : FMath::Min(CurrentTime, Length);
+	if (CurrentTime < 0.f)
+	{
+		CurrentTime += Length;
+	}
+
+	for (int32 T = 0; T < TrackToBone.Num(); ++T)
+	{
+		if (IsValidBoneIndex(TrackToBone[T]))
+		{
+			BoneSpaceTransforms[TrackToBone[T]] = CurrentAnim->SampleTrack(T, CurrentTime);
+		}
+	}
+
+	RefreshBoneTransforms();
+}
+
+void USkeletalMeshComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	//PlayAnimation(UAssetManager::GetAssetByPath<UAnimSequence>("Imported/ichigo_dance/ANIM_ichigo_dance_Scene.fbxbin"));
 }
 
 void USkeletalMeshComponent::SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform)
@@ -95,6 +124,26 @@ void USkeletalMeshComponent::RefreshBoneTransforms()
 
 	FillComponentSpaceTransforms(BoneSpaceTransforms);
 	FinalizeBoneTransform();
+}
+
+void USkeletalMeshComponent::PlayAnimation(UAnimSequence* InAnim, bool bInLoop)
+{
+	EnsurePoseInitialized();
+
+	CurrentAnim = InAnim;
+	CurrentTime = 0.0f;
+	bLooping = bInLoop;
+
+	TrackToBone.Reset();
+	if (!CurrentAnim || !SkeletalMesh)
+	{
+		return;
+	}
+
+	for (const auto& Track : CurrentAnim->Data.Tracks)
+	{
+		TrackToBone.Add(SkeletalMesh->RefSkeleton.FindBoneIndex(Track.Name.ToString()));
+	}
 }
 
 void USkeletalMeshComponent::InitPoseFromMesh()

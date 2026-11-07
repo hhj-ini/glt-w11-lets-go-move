@@ -201,7 +201,7 @@ float FQuat::Dot(const FQuat& Other) const
 
 FQuat FQuat::NLerp(const FQuat& A, const FQuat& B, float Alpha)
 {
-	const float Sign = A.Dot(B) > -0.0f ? -1.0f : 1.0f;
+	const float Sign = A.Dot(B) >= 0.0f ? 1.0f : -1.0f;
 
 	return FQuat(
 		A.X + (B.X * Sign - A.X) * Alpha,
