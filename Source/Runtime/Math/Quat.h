@@ -49,4 +49,5 @@ struct FQuat
 
 	/* Interpolation */
 	static FQuat NLerp(const FQuat& A, const FQuat& B, float Alpha);
+	static FQuat SLerp(const FQuat& A, const FQuat& B, float Alpha);
 };
