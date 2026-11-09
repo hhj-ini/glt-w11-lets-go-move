@@ -3,6 +3,7 @@
 #include "SkinnedMeshComponent.h"
 
 class UAnimSequence;
+class UAnimInstance;
 
 // 언리얼 USkeletalMeshComponent에 해당한다.
 // 부모 기준 로컬 포즈(BoneSpaceTransforms)를 가지고 포즈를 만든다. 스키닝과 렌더는 USkinnedMeshComponent가 맡는다.
@@ -16,6 +17,8 @@ public:
 
 	virtual void TickComponent(float DeltaTime) override;
 	virtual void BeginPlay() override;
+
+	virtual void EndPlay() override;
 
 	// 부모 기준 자세 하나를 바꾸고 다시 누적 + 스키닝한다
 	void SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform);
@@ -31,6 +34,10 @@ public:
 
 	virtual void RefreshBoneTransforms() override;
 
+	void SetAnimInstanceClass(UClass* InClass) { AnimInstanceClass = InClass; }
+	UAnimInstance* GetAnimInstance() const { return AnimInstance.get(); }
+	void InitAnim();	
+
 	void PlayAnimation(UAnimSequence* InAnim, bool bInLoop = true);
 
 protected:
@@ -42,10 +49,8 @@ private:
 
 	TArray<FTransform> BoneSpaceTransforms;
 
-	// 재생 확인용 
-	UAnimSequence* CurrentAnim = nullptr;
-	float CurrentTime = 0.f;
-	float PlayRate = 1.0f;
-	bool bLooping = true;
-	TArray<int32> TrackToBone;
+	// 만들어질 애니메이션 인스턴스의 클래스
+	UClass* AnimInstanceClass = nullptr;
+	// BeginPlay에서 실제 애니메이션 인스턴스를 만듦.
+	TUniquePtr<UAnimInstance> AnimInstance = nullptr;
 };

@@ -3,12 +3,13 @@
 #include "Asset/AssetManager.h"
 #include "Render/SkeletalMesh.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/AnimInstance.h"
 
 USkeletalMeshComponent::USkeletalMeshComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 
-	SetSkeletalMesh(UAssetManager::GetAssetByPath<USkeletalMesh>("Models/AllMight/SK_AllMight_root.fbxbin"));
+	SetSkeletalMesh(UAssetManager::GetAssetByPath<USkeletalMesh>("Imported/Adriana Ilma/SK_Adriana Ilma_HD_Neutral_F.fbxbin"));
 }
 
 USkeletalMeshComponent::~USkeletalMeshComponent()
@@ -19,26 +20,12 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 {
 	Super::TickComponent(DeltaTime);
 
-	if (!CurrentAnim || !SkeletalMesh)
+	if (!AnimInstance)
 	{
 		return;
 	}
-
-	const float Length = CurrentAnim->GetPlayLength();
-	CurrentTime += DeltaTime * PlayRate;
-	CurrentTime = bLooping ? std::fmod(CurrentTime, Length) : FMath::Min(CurrentTime, Length);
-	if (CurrentTime < 0.f)
-	{
-		CurrentTime += Length;
-	}
-
-	for (int32 T = 0; T < TrackToBone.Num(); ++T)
-	{
-		if (IsValidBoneIndex(TrackToBone[T]))
-		{
-			BoneSpaceTransforms[TrackToBone[T]] = CurrentAnim->SampleTrack(T, CurrentTime);
-		}
-	}
+	AnimInstance->UpdateAnimation(DeltaTime);
+	AnimInstance->EvaluateAnimation(BoneSpaceTransforms);
 
 	RefreshBoneTransforms();
 }
@@ -46,8 +33,14 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 void USkeletalMeshComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	InitAnim();
+	PlayAnimation(UAssetManager::GetAssetByPath<UAnimSequence>("Imported/Adriana Ilma/ANIM_Adriana Ilma_FBXExportClip_0.fbxbin"));
+}
 
-	//PlayAnimation(UAssetManager::GetAssetByPath<UAnimSequence>("Imported/ichigo_dance/ANIM_ichigo_dance_Scene.fbxbin"));
+void USkeletalMeshComponent::EndPlay()
+{
+	AnimInstance.reset();
+	Super::EndPlay();
 }
 
 void USkeletalMeshComponent::SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform)
@@ -126,24 +119,25 @@ void USkeletalMeshComponent::RefreshBoneTransforms()
 	FinalizeBoneTransform();
 }
 
-void USkeletalMeshComponent::PlayAnimation(UAnimSequence* InAnim, bool bInLoop)
+void USkeletalMeshComponent::InitAnim()
 {
 	EnsurePoseInitialized();
-
-	CurrentAnim = InAnim;
-	CurrentTime = 0.0f;
-	bLooping = bInLoop;
-
-	TrackToBone.Reset();
-	if (!CurrentAnim || !SkeletalMesh)
+	if (!AnimInstance)
 	{
-		return;
+		UClass* Class = AnimInstanceClass ? AnimInstanceClass : UAnimInstance::StaticClass();
+		AnimInstance.reset(NewObject<UAnimInstance>(this, Class));
+	}
+	AnimInstance->InitializeAnimation(this);
+}
+
+void USkeletalMeshComponent::PlayAnimation(UAnimSequence* InAnim, bool bInLoop)
+{
+	if (!AnimInstance)
+	{
+		InitAnim();
 	}
 
-	for (const auto& Track : CurrentAnim->Data.Tracks)
-	{
-		TrackToBone.Add(SkeletalMesh->RefSkeleton.FindBoneIndex(Track.Name.ToString()));
-	}
+	AnimInstance->PlaySequence(InAnim, bInLoop);
 }
 
 void USkeletalMeshComponent::InitPoseFromMesh()
