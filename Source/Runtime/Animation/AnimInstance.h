@@ -3,8 +3,8 @@
 #include "UObject/Class.h"
 #include "Animation/AnimNode_SequencePlayer.h"
 
-class USkeletalMeshComponent;
 class UAnimSequence;
+class USkeletalMeshComponent;
 
 class UAnimInstance : public UObject
 {

@@ -283,7 +283,7 @@ FQuat FQuat::SLerp(const FQuat& A, const FQuat& B, float Alpha)
 
 	const float Theta = std::acos(CosTheta);
 	const float InvSin = 1.0f / std::sin(Theta);
-	const float WA = std::sin((1.0f - Alpha) - Theta) * InvSin;
+	const float WA = std::sin((1.0f - Alpha) * Theta) * InvSin;
 	const float WB = std::sin(Alpha * Theta) * InvSin;
 	return FQuat(A.X * WA + B2.X * WB, A.Y * WA + B2.Y * WB,
 		A.Z * WA + B2.Z * WB, A.W * WA + B2.W * WB);

@@ -25,3 +25,32 @@ struct FAnimNode_Base
 	virtual void Update(const FAnimationUpdateContext& Context) = 0;
 	virtual void Evaluate(FPoseContext& Output) = 0;
 };
+
+struct FPoseLink
+{
+	FAnimNode_Base* LinkNode = nullptr;
+
+	void Initialize(const FReferenceSkeleton& Skel)
+	{
+		if (LinkNode)
+		{
+			LinkNode->Initialize(Skel);
+		}
+	}
+
+	void Update(const FAnimationUpdateContext& Ctx)
+	{
+		if (LinkNode)
+		{
+			LinkNode->Update(Ctx);
+		}
+	}
+
+	void Evaluate(FPoseContext& Output)
+	{
+		if (LinkNode)
+		{
+			LinkNode->Evaluate(Output);
+		}
+	}
+};

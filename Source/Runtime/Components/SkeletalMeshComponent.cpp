@@ -4,12 +4,14 @@
 #include "Render/SkeletalMesh.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimInstance.h"
+#include "Animation/LocomotionAnimInstance.h"
 
 USkeletalMeshComponent::USkeletalMeshComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 
-	SetSkeletalMesh(UAssetManager::GetAssetByPath<USkeletalMesh>("Imported/Adriana Ilma/SK_Adriana Ilma_HD_Neutral_F.fbxbin"));
+	SetSkeletalMesh(UAssetManager::GetAssetByPath<USkeletalMesh>("Imported/UAL1_Standard/SK_UAL1_Standard_root.fbxbin"));
+	SetAnimInstanceClass(ULocomotionAnimInstance::StaticClass());
 }
 
 USkeletalMeshComponent::~USkeletalMeshComponent()
@@ -34,7 +36,6 @@ void USkeletalMeshComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	InitAnim();
-	PlayAnimation(UAssetManager::GetAssetByPath<UAnimSequence>("Imported/Adriana Ilma/ANIM_Adriana Ilma_FBXExportClip_0.fbxbin"));
 }
 
 void USkeletalMeshComponent::EndPlay()
