@@ -5,6 +5,7 @@
 #include "Render/ImageLoader.h"
 #include "Render/RenderEnums.h"
 #include "Render/RenderStates.h"
+#include "Animation/AnimSequenceTypes.h"
 #include <array>
 
 enum class EFbxAssetType : uint32
@@ -14,6 +15,7 @@ enum class EFbxAssetType : uint32
 	Skeleton,
 	Material,
 	Texture2D,
+	AnimSequence,
 };
 
 struct FFbxImportOptions
@@ -60,6 +62,7 @@ struct FFbxAssetData
 	FReferenceSkeleton RefSkeleton;
 	FFbxMaterialData Material;
 	FImageData Texture;
+	FAnimSequenceData Animation;
 
 	bool Validate(FString& Error) const;
 };

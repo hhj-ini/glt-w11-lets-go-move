@@ -194,6 +194,11 @@ FVector FQuat::GetUpVector() const
 		1.0f - 2.0f * (X * X + Y * Y));
 }
 
+float FQuat::Dot(const FQuat& Other) const
+{
+	return (X * Other.X) + (Y * Other.Y) + (Z * Other.Z) + (W * Other.W);
+}
+
 /* Statics */
 
 FQuat FQuat::Identity()
@@ -244,4 +249,42 @@ FQuat FQuat::MakeFromEuler(float RollRadian, float PitchRadian, float YawRadian)
 
 		// W
 		CR * CP * CY + SR * SP * SY);
+}
+
+/* Static Interpolation */
+FQuat FQuat::NLerp(const FQuat& A, const FQuat& B, float Alpha)
+{
+	const float Sign = A.Dot(B) >= 0.0f ? 1.0f : -1.0f;
+
+	return FQuat(
+		A.X + (B.X * Sign - A.X) * Alpha,
+		A.Y + (B.Y * Sign - A.Y) * Alpha,
+		A.Z + (B.Z * Sign - A.Z) * Alpha,
+		A.W + (B.W * Sign - A.W) * Alpha)
+		.Normalized();
+}
+
+FQuat FQuat::SLerp(const FQuat& A, const FQuat& B, float Alpha)
+{
+	float CosTheta = A.Dot(B);
+	FQuat B2 = B;
+
+	if (CosTheta < 0.0f)
+	{
+		B2 = FQuat(-B.X, -B.Y, -B.Z, -B.W);
+		CosTheta = -CosTheta;
+	}
+
+	// 거의 같은 방향이라면 NLerp
+	if (CosTheta > 0.9995f)
+	{
+		return NLerp(A, B2, Alpha);
+	}
+
+	const float Theta = std::acos(CosTheta);
+	const float InvSin = 1.0f / std::sin(Theta);
+	const float WA = std::sin((1.0f - Alpha) * Theta) * InvSin;
+	const float WB = std::sin(Alpha * Theta) * InvSin;
+	return FQuat(A.X * WA + B2.X * WB, A.Y * WA + B2.Y * WB,
+		A.Z * WA + B2.Z * WB, A.W * WA + B2.W * WB);
 }

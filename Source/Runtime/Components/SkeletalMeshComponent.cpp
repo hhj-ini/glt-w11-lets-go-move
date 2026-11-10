@@ -2,12 +2,16 @@
 #include "SkeletalMeshComponent.h"
 #include "Asset/AssetManager.h"
 #include "Render/SkeletalMesh.h"
+#include "Animation/AnimSequence.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/LocomotionAnimInstance.h"
 
 USkeletalMeshComponent::USkeletalMeshComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 
-	SetSkeletalMesh(UAssetManager::GetAssetByPath<USkeletalMesh>("Models/AllMight/SK_AllMight_root.fbxbin"));
+	SetSkeletalMesh(UAssetManager::GetAssetByPath<USkeletalMesh>("Imported/UAL1_Standard/SK_UAL1_Standard_root.fbxbin"));
+	SetAnimInstanceClass(ULocomotionAnimInstance::StaticClass());
 }
 
 USkeletalMeshComponent::~USkeletalMeshComponent()
@@ -18,7 +22,26 @@ void USkeletalMeshComponent::TickComponent(float DeltaTime)
 {
 	Super::TickComponent(DeltaTime);
 
-	// TODO: 애니메이션 평가 → BoneSpaceTransforms → RefreshBoneTransforms
+	if (!AnimInstance)
+	{
+		return;
+	}
+	AnimInstance->UpdateAnimation(DeltaTime);
+	AnimInstance->EvaluateAnimation(BoneSpaceTransforms);
+
+	RefreshBoneTransforms();
+}
+
+void USkeletalMeshComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	InitAnim();
+}
+
+void USkeletalMeshComponent::EndPlay()
+{
+	AnimInstance.reset();
+	Super::EndPlay();
 }
 
 void USkeletalMeshComponent::SetBoneLocalTransform(int32 BoneIndex, const FTransform& LocalTransform)
@@ -95,6 +118,27 @@ void USkeletalMeshComponent::RefreshBoneTransforms()
 
 	FillComponentSpaceTransforms(BoneSpaceTransforms);
 	FinalizeBoneTransform();
+}
+
+void USkeletalMeshComponent::InitAnim()
+{
+	EnsurePoseInitialized();
+	if (!AnimInstance)
+	{
+		UClass* Class = AnimInstanceClass ? AnimInstanceClass : UAnimInstance::StaticClass();
+		AnimInstance.reset(NewObject<UAnimInstance>(this, Class));
+	}
+	AnimInstance->InitializeAnimation(this);
+}
+
+void USkeletalMeshComponent::PlayAnimation(UAnimSequence* InAnim, bool bInLoop)
+{
+	if (!AnimInstance)
+	{
+		InitAnim();
+	}
+
+	AnimInstance->PlaySequence(InAnim, bInLoop);
 }
 
 void USkeletalMeshComponent::InitPoseFromMesh()

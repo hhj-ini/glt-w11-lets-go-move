@@ -136,6 +136,31 @@ void Serialize(FBinary& Ar, FFbxAssetData& Data)
 		Ar.Pod(Data.Texture.Width); Ar.Pod(Data.Texture.Height); Ar.Pod(Data.Texture.BytesPerPixel);
 		Ar.Pod(Data.Texture.RowPitch); Ar.Pod(Data.Texture.Format); Ar.Array(Data.Texture.Pixels, MaxImageBytes);
 	}
+	else if (Data.Type == EFbxAssetType::AnimSequence)
+	{
+		auto& AnimSeq = Data.Animation;
+		Ar.String(Data.SkeletonKey); Ar.String(AnimSeq.StackName);
+		Ar.Pod(AnimSeq.SequenceLength);
+		Ar.Pod(AnimSeq.FrameRate);
+		Ar.Pod(AnimSeq.NumFrames);
+
+		uint32 Count = AnimSeq.Tracks.Num();
+		Ar.Pod(Count);
+		if (!Ar.bGood || Count > 65536) { Ar.bGood = false; return; }
+		// 읽을 때는 개수만큼 트랙을 먼저 만들어야 아래 루프가 돈다.
+		if (Ar.In) AnimSeq.Tracks.SetNum(static_cast<int32>(Count));
+
+		for (auto& T : AnimSeq.Tracks)
+		{
+			FString Name = Ar.In ? FString() : T.Name.ToString();
+			Ar.String(Name);
+			if (Ar.In) T.Name = FName(Name);
+			// 키 배열은 쓸 때와 읽을 때 모두 직렬화한다.
+			Ar.Array(T.InternalTrack.PosKeys);
+			Ar.Array(T.InternalTrack.RotKeys);
+			Ar.Array(T.InternalTrack.ScaleKeys);
+		}
+	}
 }
 
 bool Finite(const FVector& V) { return std::isfinite(V.X) && std::isfinite(V.Y) && std::isfinite(V.Z); }
@@ -217,6 +242,32 @@ bool FFbxAssetData::Validate(FString& Error) const
 			static_cast<uint64>(Texture.GetRowPitch()) * Rows != static_cast<uint64>(Texture.Pixels.Num()))
 		{ Error = "Invalid texture dimensions, format or pixel layout"; return false; }
 	}
+	else if (Type == EFbxAssetType::AnimSequence)
+	{
+		const auto& AnimSeq = Animation;
+		if (SkeletonKey.empty())
+		{
+			Error = "Missing Skeleton ref";
+			return false;
+		}
+
+		if (!(AnimSeq.SequenceLength > 0) || !(AnimSeq.FrameRate > 0) || AnimSeq.NumFrames < 2)
+		{
+			Error = "Invaild animation length";
+			return false;
+		}
+
+		for (const auto& T : AnimSeq.Tracks)
+		{
+			const auto& K = T.InternalTrack;
+			const int32 N = K.PosKeys.Num();
+			if ((N != 1 && N != AnimSeq.NumFrames) || K.RotKeys.Num() != N || K.ScaleKeys.Num() != N)
+			{
+				Error = "Invalid Key Count : " + T.Name.ToString();
+				return false;
+			}
+		}
+	}
 	else { Error = "Unknown FBX asset type"; return false; }
 	return true;
 }
@@ -227,7 +278,7 @@ bool FFbxAssetBake::ReadBaked(const FString& Path, FFbxAssetData& Out, FString& 
 	if (!In) { Error = "Cannot open FBX binary: " + Path; return false; }
 	FFbxBakeHeader Header, Expected;
 	if (!In.read(reinterpret_cast<char*>(&Header), sizeof(Header)) || std::memcmp(Header.Magic, Expected.Magic, 4) ||
-		Header.Version != FbxBakeVersion || Header.Type < 1 || Header.Type > 5)
+		Header.Version != FbxBakeVersion || Header.Type < 1 || Header.Type > 6)
 	{ Error = "Invalid .fbxbin header/version; import the FBX again: " + Path; return false; }
 	FFbxAssetData Data; Data.Type = static_cast<EFbxAssetType>(Header.Type);
 	FBinary Ar; Ar.In = &In; Serialize(Ar, Data);
@@ -242,7 +293,7 @@ bool FFbxAssetBake::ReadSourceIdentity(const FString& Path, FString& Source, FSt
 	std::ifstream In(FbxPath::FromString(Path), std::ios::binary);
 	FFbxBakeHeader Header, Expected;
 	if (!In.read(reinterpret_cast<char*>(&Header), sizeof(Header)) || std::memcmp(Header.Magic, Expected.Magic, 4) ||
-		Header.Type < 1 || Header.Type > 5) return false;
+		Header.Type < 1 || Header.Type > 6) return false;
 	FBinary Ar; Ar.In = &In; Ar.String(Source); Ar.String(Object);
 	return Ar.bGood;
 }
